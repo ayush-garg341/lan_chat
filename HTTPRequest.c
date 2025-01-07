@@ -26,11 +26,18 @@ struct HTTPRequest http_request_constructor(char *request_string) {
         }
     }
     char *request_line = strtok(request_string, "\n");
-    printf("Request Line ::: %s\n", request_line);
-    char *header_fields = strtok(NULL, "|");
-    printf("Header fields ::: %s\n", header_fields);
-    char *body = strtok(NULL, "|");
-    printf("Body ::: %s\n", body);
+    char *body;
+
+    // header fields and body are not extracted properly
+    char *token = strtok(NULL, "\r\n\r\n");
+    while(token != NULL) {
+
+        // request body is little ambiguous, sometime header will come as body
+        // TODO: Fix the body part ...
+        body = token;
+        token = strtok(NULL, "\r\n\r\n");
+    }
+
 
     char *method = strtok(request_line, " ");
     request.Method = method_select(method);
@@ -42,6 +49,7 @@ struct HTTPRequest http_request_constructor(char *request_string) {
     HTTPVersion = strtok(HTTPVersion, "/");
     HTTPVersion = strtok(NULL, "/");
     request.HTTPVersion = (float)atof(HTTPVersion);
+    request.Body = body;
 
     return request;
 }

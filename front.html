@@ -11,18 +11,43 @@
 </head>
 <body>
     <h1>Welcome to My Web App</h1>
-    <button onclick="getData()">Fetch Data from C Backend</button>
+    <!-- New input box and submit button -->
+    <div>
+        <label for="userInput">Enter Data:</label>
+        <input type="text" id="userInput" placeholder="Type something here..." />
+        <button onclick="sendData()">Submit Data to Backend</button>
+    </div>
+
+    <!-- Names list -->
+    <h2>Names List:</h2>
+    <ul id="namesList"></ul>
+
     <div id="output"></div>
 
     <script>
-        function getData() {
-            fetch('http://192.168.1.5:4000/data')  // Send GET request to C backend
-            .then(response => response.text())
-            .then(data => {
-                console.log("data ===== ", data);
-                document.getElementById('output').innerText = data;  // Display backend response
+        // Function to send data to backend
+        function sendData() {
+            const userInput = document.getElementById('userInput').value; // Get user input
+            fetch('http://192.168.1.2:4000/submit', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ data: userInput }), // Send input as JSON
             })
-            .catch(error => console.error('Error fetching data:', error));
+                .then(response => response.json())
+                .then(data => {
+                    console.log("response ===== ", data);
+                    // Append the new name to the names list
+                    const namesList = document.getElementById('namesList');
+                    const li = document.createElement('li');
+                    li.textContent = data["name"];
+                    namesList.appendChild(li);
+
+                    document.getElementById('output').innerText = `Added: ${data["name"]}`;
+                    document.getElementById("userInput").value = "";
+                })
+                .catch(error => console.error('Error sending data:', error));
         }
     </script>
 </body>

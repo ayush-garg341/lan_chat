@@ -20,6 +20,7 @@ struct HTTPRequest {
   int Method;
   char *URI;
   float HTTPVersion;
+  char *Body;
 };
 
 struct HTTPRequest http_request_constructor(char *request_string);

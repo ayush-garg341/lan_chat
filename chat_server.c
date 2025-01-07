@@ -13,6 +13,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include"HTTPRequest.h"
+#include "cJSON.h"
 
 #define BUFSIZE 1024
 
@@ -81,6 +82,49 @@ void send_json_response(int client_socket) {
     send(client_socket, json_data, json_data_length, 0);
 
 }
+
+void send_connected_info(int client_socket, char *buff) {
+
+    // Example JSON data to return
+
+    printf("buffer data is %s\n", buff);
+
+    cJSON *parsed_json = cJSON_Parse(buff);
+    cJSON *data_item = cJSON_GetObjectItem(parsed_json, "data");
+    if (cJSON_IsString(data_item) && (data_item->valuestring != NULL)) {
+        printf("Extracted data: %s\n", data_item->valuestring);
+    } else {
+        printf("Error: 'data' field is missing or not a string\n");
+    }
+
+    cJSON *response = cJSON_CreateObject();
+    cJSON_AddStringToObject(response, "name", data_item->valuestring);
+
+    char *json_string = cJSON_PrintUnformatted(response);
+
+    // Free the cJSON object (not the string)
+    cJSON_Delete(response);
+
+    // HTTP Response headers
+    const char *http_header =
+        "HTTP/1.1 200 OK\r\n"
+        "Content-Type: application/json\r\n"
+        "Content-Length: %d\r\n"
+        "\r\n";  // Blank line between headers and body
+
+    // Get the length of the JSON data
+    int json_data_length = strlen(json_string);
+
+    // Send the HTTP header
+    char header_buffer[256];
+    snprintf(header_buffer, sizeof(header_buffer), http_header, json_data_length);
+    send(client_socket, header_buffer, strlen(header_buffer), 0);
+
+    // Send the JSON data
+    send(client_socket, json_string, json_data_length, 0);
+
+}
+
 
 void send_html_response(int client_socket, char *html_file) {
     FILE *file = fopen(html_file, "r");
@@ -216,7 +260,7 @@ int main(int argc, char **argv) {
         hostaddrp = inet_ntoa(clientaddr.sin_addr);
         if (hostaddrp == NULL)
             error("ERROR on inet_ntoa\n");
-        printf("server established connection with (%s)\n", hostaddrp);
+        // printf("server established connection with (%s)\n", hostaddrp);
 
         /*
          * read: read input string from the client
@@ -225,18 +269,24 @@ int main(int argc, char **argv) {
         n = read(childfd, buf, BUFSIZE);
         if (n < 0)
             error("ERROR reading from socket");
-        printf("server received %d bytes\n", n);
+        // printf("server received %d bytes\n", n);
 
         struct HTTPRequest request = http_request_constructor(buf);
+        printf("request uri ==== %s\n", request.URI);
         if(request.Method == GET) {
-            printf("request uri ==== %s", request.URI);
-            if(strcmp(request.URI, "data") == 0) {
+            if(strcmp(request.URI, "/data") == 0) {
                 send_json_response(childfd);
             }
             else {
                 char *html_file = "front.html";
                 send_html_response(childfd, html_file);
+            }
 
+            fflush(stdout);
+        }
+        else if(request.Method == POST) {
+            if(strcmp(request.URI, "/submit") == 0) {
+                send_connected_info(childfd, request.Body);
             }
         }
     }
